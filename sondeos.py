@@ -26,7 +26,7 @@ async def sondeo(ctx, encuesta_id: int = None):  # Agregar valor predeterminado
             return
 
     encuestas = []
-    with open("d:\\BOT CORD_Deadly\\sondeo.txt", "r", encoding="utf-8") as archivo:
+    with open("sondeo.txt", "r", encoding="utf-8") as archivo:
         for linea in archivo:
             partes = linea.strip().split("|")
             encuestas.append({
