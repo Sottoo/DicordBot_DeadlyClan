@@ -12,7 +12,7 @@ from sondeos import sondeo
 from cringe import setup_cringe_commands
 from bromalocal import setup_bromalocal_commands
 from help import setup as setup_help_commands
-import threading
+from musica import setup_music_commands
 import os
 import asyncio
 import time
@@ -40,7 +40,8 @@ setup_antilinks(bot)
 setup_rewards_commands(bot)
 setup_cringe_commands(bot)
 setup_bromalocal_commands(bot)
-setup_help_commands(bot)  
+setup_help_commands(bot)
+setup_music_commands(bot)
 bot.add_command(trivia)
 bot.add_command(sondeo)
 
