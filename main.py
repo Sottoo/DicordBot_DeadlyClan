@@ -87,14 +87,16 @@ def run_webserver():
 # Iniciar el bot y el servidor web
 def start_bot():
     try:
-        # Leer el token desde token.txt
-        with open("token.txt", "r") as token_file:
-            token = token_file.read().strip()
+        # Leer el token desde las variables de entorno
+        token = os.getenv("DISCORD_TOKEN")
+        if not token:
+            raise ValueError("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala correctamente.")
+
         bot.run(token)  # Discord.py maneja automáticamente las reconexiones
     except discord.errors.HTTPException as e:
         print(f"⚠️ Error de conexión: {e}. Verifica el token y los permisos del bot.")
-    except FileNotFoundError:
-        print("⚠️ Archivo 'token.txt' no encontrado. Por favor, crea el archivo y coloca el token dentro.")
+    except ValueError as e:
+        print(e)
     except Exception as e:
         print(f"⚠️ Error inesperado: {e}")
 
