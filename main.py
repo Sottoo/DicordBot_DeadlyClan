@@ -16,6 +16,7 @@ import threading
 from webserver import run as run_webserver
 import os
 import asyncio
+import time
 
 
 intents = discord.Intents.default()
@@ -74,7 +75,13 @@ async def on_message(message):
 def start_bot():
     try:
         token = os.environ["DISCORD_TOKEN"]
-        bot.run(token)
+        while True:
+            try:
+                bot.run(token)
+                break  # Salir del bucle si bot.run termina sin excepción
+            except discord.errors.HTTPException as e:
+                print(f"⚠️ Error de conexión: {e}. Intentando reconectar en 5 minutos...")
+                time.sleep(300)  # Esperar 5 minutos antes de intentar reconectar
     except KeyError:
         print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
 
