@@ -6,17 +6,17 @@ from clear import setup_commands as setup_clear_commands
 from avisos import setup_avisos
 from spam import setup_spam_commands, detect_spam
 from antilinks import setup_antilinks, check_links
-from rewards import setup_rewards_commands, add_xp  
+from rewards import setup_rewards_commands, add_xp
 from Trivia import trivia
 from sondeos import sondeo
 from cringe import setup_cringe_commands
 from bromalocal import setup_bromalocal_commands
 from help import setup as setup_help_commands
 import threading
-from webserver import run as run_webserver
 import os
 import asyncio
 import time
+from flask import Flask
 
 
 intents = discord.Intents.default()
@@ -67,19 +67,36 @@ async def on_message(message):
     await detect_spam(message)  # Desde spam.py
     await check_links(message)  # Desde antilinks.py
 
+    # Agregar XP por mensaje
+    from rewards import add_xp  # Importar aquí para evitar conflictos circulares
+    await add_xp(message.author, 1, message.channel)  # 1 XP por mensaje
+
     # Procesar comandos después de manejar el mensaje
     await bot.process_commands(message)
 
 
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "El bot está activo y funcionando correctamente."
+
+def run_webserver():
+    app.run(host="0.0.0.0", port=8080)
+
 # Iniciar el bot y el servidor web
 def start_bot():
     try:
-        token = os.environ["DISCORD_TOKEN"]
+        # Leer el token desde token.txt
+        with open("token.txt", "r") as token_file:
+            token = token_file.read().strip()
         bot.run(token)  # Discord.py maneja automáticamente las reconexiones
     except discord.errors.HTTPException as e:
         print(f"⚠️ Error de conexión: {e}. Verifica el token y los permisos del bot.")
-    except KeyError:
-        print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
+    except FileNotFoundError:
+        print("⚠️ Archivo 'token.txt' no encontrado. Por favor, crea el archivo y coloca el token dentro.")
+    except Exception as e:
+        print(f"⚠️ Error inesperado: {e}")
 
 if __name__ == "__main__":
     # Ejecutar el servidor web en un hilo separado
