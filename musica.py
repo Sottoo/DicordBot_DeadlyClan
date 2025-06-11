@@ -1,99 +1,75 @@
 import discord
 from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont
-import requests
-from io import BytesIO
-from bienvenida import send_welcome_message
-from spam import detect_spam
+import youtube_dl
+import asyncio
 
-def setup_events(bot: commands.Bot):
-    @bot.event
-    async def on_ready():
-        print(f'✅ Bot conectado como {bot.user}')
-        print("🔍 Servidores conectados:")
-        for guild in bot.guilds:
-            print(f"- {guild.name} (ID: {guild.id})")
+# Configuración de youtube_dl
+youtube_dl.utils.bug_reports_message = lambda: ""
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'extractaudio': True,
+    'audioformat': 'mp3',
+    'noplaylist': True,
+    'quiet': True,
+    'default_search': 'auto',
+}
+ffmpeg_options = {
+    'options': '-vn',
+}
 
-    @bot.event
-    async def on_raw_reaction_add(payload):
-        if payload.emoji.name != "✅":
-            return
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
-        print(f"🔄 Reacción detectada de usuario ID {payload.user_id} en mensaje ID {payload.message_id}")
+class Music(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.voice_client = None
 
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None:
-            print("⚠️ Servidor no encontrado.")
-            return
+    @commands.command(name="join")
+    async def join(self, ctx):
+        """Unirse al canal de voz del usuario."""
+        if ctx.author.voice:
+            channel = ctx.author.voice.channel
+            self.voice_client = await channel.connect()
+            await ctx.send(f"✅ Me he unido al canal de voz: {channel.name}")
+        else:
+            await ctx.send("❌ Debes estar en un canal de voz para usar este comando.")
 
-        try:
-            member = guild.get_member(payload.user_id)
-            if member is None:
-                member = await guild.fetch_member(payload.user_id)
-        except Exception as e:
-            print(f"⚠️ No se pudo obtener el miembro: {e}")
-            return
+    @commands.command(name="leave")
+    async def leave(self, ctx):
+        """Salir del canal de voz."""
+        if self.voice_client:
+            await self.voice_client.disconnect()
+            self.voice_client = None
+            await ctx.send("✅ He salido del canal de voz.")
+        else:
+            await ctx.send("❌ No estoy en ningún canal de voz.")
 
-        if member.bot:
-            print("🤖 El usuario es un bot. Ignorando.")
-            return
-
-        role_id = 1381182782105190400  # ⚠️ Asegúrate de que este ID sea correcto
-        role = guild.get_role(role_id)
-
-        if role is None:
-            print(f"⚠️ Rol con ID {role_id} no encontrado.")
-            return
-
-        try:
-            await member.add_roles(role, reason="Aceptó las reglas")
-            print(f"✅ Rol '{role.name}' asignado a {member.name}")
-        except discord.Forbidden:
-            print("🚫 Permisos insuficientes para asignar el rol.")
-        except Exception as e:
-            print(f"⚠️ Error inesperado: {e}")
-
-    @bot.event
-    async def on_raw_reaction_remove(payload):
-        if payload.emoji.name != "✅":
-            return
-
-        print(f"🔄 Reacción eliminada por usuario ID {payload.user_id} en mensaje ID {payload.message_id}")
-
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None:
-            print("⚠️ Servidor no encontrado.")
+    @commands.command(name="play")
+    async def play(self, ctx, *, url):
+        """Reproducir música desde una URL de YouTube."""
+        if not self.voice_client:
+            await ctx.send("❌ Primero usa el comando `!join` para que me una a un canal de voz.")
             return
 
         try:
-            member = guild.get_member(payload.user_id)
-            if member is None:
-                member = await guild.fetch_member(payload.user_id)
+            await ctx.send("🔍 Buscando la canción...")
+            info = ytdl.extract_info(url, download=False)
+            url2 = info['url']
+            title = info.get('title', 'Audio desconocido')
+
+            self.voice_client.play(discord.FFmpegPCMAudio(url2, **ffmpeg_options))
+            await ctx.send(f"🎶 Reproduciendo: **{title}**")
         except Exception as e:
-            print(f"⚠️ No se pudo obtener el miembro: {e}")
-            return
+            await ctx.send(f"⚠️ Error al reproducir la música: {e}")
 
-        if member.bot:
-            print("🤖 El usuario es un bot. Ignorando.")
-            return
+    @commands.command(name="stop")
+    async def stop(self, ctx):
+        """Detener la música."""
+        if self.voice_client and self.voice_client.is_playing():
+            self.voice_client.stop()
+            await ctx.send("⏹️ Música detenida.")
+        else:
+            await ctx.send("❌ No hay música reproduciéndose actualmente.")
 
-        role_id = 1381182782105190400  # ⚠️ Asegúrate de que este ID sea correcto
-        role = guild.get_role(role_id)
-
-        if role is None:
-            print(f"⚠️ Rol con ID {role_id} no encontrado.")
-            return
-
-        try:
-            await member.remove_roles(role, reason="Quitó la reacción de aceptación")
-            print(f"❌ Rol '{role.name}' removido de {member.name}")
-        except discord.Forbidden:
-            print("🚫 Permisos insuficientes para remover el rol.")
-        except Exception as e:
-            print(f"⚠️ Error inesperado: {e}")
-
-    @bot.event
-    async def on_member_join(member):
-        # Llamar a la función de bienvenida renombrada
-        await send_welcome_message(member)
-
+async def setup(bot):
+    await bot.add_cog(Music(bot))  # Usar await para agregar el cog correctamente
