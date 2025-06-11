@@ -97,7 +97,8 @@ async def start_bot():
         # Registrar comandos de música de forma asíncrona
         await setup(bot)
 
-        bot.run(token)  # Discord.py maneja automáticamente las reconexiones
+        # Ejecutar el bot
+        await bot.start(token)  # Usar bot.start en lugar de bot.run para evitar conflictos con asyncio.run()
     except discord.errors.HTTPException as e:
         print(f"⚠️ Error de conexión: {e}. Verifica el token y los permisos del bot.")
     except ValueError as e:
@@ -110,4 +111,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_webserver).start()
 
     # Iniciar el bot
-    asyncio.run(start_bot())  # Usar asyncio.run para manejar la función asíncrona
+    asyncio.get_event_loop().run_until_complete(start_bot())  # Usar run_until_complete para manejar la función asíncrona
