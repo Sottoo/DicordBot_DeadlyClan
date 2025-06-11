@@ -2,3 +2,4 @@ discord.py
 flask
 pillow
 requests
+pytz
