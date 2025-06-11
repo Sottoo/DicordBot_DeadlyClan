@@ -14,7 +14,6 @@ from bromalocal import setup_bromalocal_commands
 from help import setup as setup_help_commands
 from Economia.economia import setup as setup_economia_commands
 from Economia.cartel import setup as setup_cartel_commands
-import os
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -73,7 +72,8 @@ async def on_message(message):
 # Iniciar el bot
 if __name__ == "__main__":
     try:
-        token = os.environ["DISCORD_TOKEN"]  # Leer el token desde las variables de entorno
+        with open("token.txt", "r") as token_file:
+            token = token_file.read().strip()
         bot.run(token)
-    except KeyError:
-        print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
+    except FileNotFoundError:
+        print("⚠️ Archivo 'token.txt' no encontrado. Por favor, crea este archivo y coloca el token del bot dentro.")

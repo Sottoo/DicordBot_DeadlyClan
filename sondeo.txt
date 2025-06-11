@@ -1,0 +1,39 @@
+¿Cuál es tu modo de juego favorito en Valorant?|🅰️ Competitivo,🅱️ Deathmatch,🇨 Spike Rush,🇩 Personalizado
+¿Prefieres jugar solo o en equipo?|🅰️ Solo,🅱️ En equipo,🇨 Depende del día,🇩 No juego Valorant
+¿Qué agente crees que necesita un nerf?|🅰️ Jett,🅱️ Chamber,🇨 Raze,🇩 Killjoy
+¿Cuál es tu mapa menos favorito?|🅰️ Icebox,🅱️ Fracture,🇨 Pearl,🇩 Bind
+¿Cuál es tu rol favorito?|🅰️ Duelista,🅱️ Iniciador,🇨 Centinela,🇩 Controlador
+¿Cuál es tu arma favorita?|🅰️ Vandal,🅱️ Phantom,🇨 Operator,🇩 Sheriff
+¿Qué habilidad te parece más molesta?|🅰️ Flash,🅱️ Smoke,🇨 Stun,🇩 Granadas
+¿Cuál es tu rango actual?|🅰️ Hierro,🅱️ Oro,🇨 Diamante,🇩 Radiante
+¿Prefieres jugar en ataque o defensa?|🅰️ Ataque,🅱️ Defensa,🇨 Depende del mapa,🇩 Depende del equipo
+¿Qué agente crees que necesita un buff?|🅰️ Phoenix,🅱️ Yoru,🇨 Astra,🇩 Cypher
+¿Cuál es tu mapa favorito?|🅰️ Haven,🅱️ Ascent,🇨 Split,🇩 Lotus
+¿Qué skin de arma te gusta más?|🅰️ Prime,🅱️ Reaver,🇨 Oni,🇩 Glitchpop
+¿Cuál es tu modo de juego menos favorito?|🅰️ Competitivo,🅱️ Deathmatch,🇨 Spike Rush,🇩 Personalizado
+¿Prefieres jugar con amigos o con desconocidos?|🅰️ Amigos,🅱️ Desconocidos,🇨 Ambos,🇩 No importa
+¿Qué agente crees que es el más fácil de usar?|🅰️ Sage,🅱️ Reyna,🇨 Brimstone,🇩 Killjoy
+¿Qué agente crees que es el más difícil de usar?|🅰️ Astra,🅱️ Viper,🇨 Yoru,🇩 Cypher
+¿Cuál es tu habilidad definitiva favorita?|🅰️ Jett - Tormenta de cuchillas,🅱️ Raze - Explosión,🇨 Chamber - Tour de force,🇩 Killjoy - Bloqueo
+¿Qué prefieres mejorar primero?|🅰️ Precisión,🅱️ Estrategia,🇨 Comunicación,🇩 Posicionamiento
+¿Cuál es tu estilo de juego?|🅰️ Agresivo,🅱️ Pasivo,🇨 Estratégico,🇩 Adaptativo
+¿Qué prefieres comer?|🅰️ Tacos,🅱️ Pizza,🇨 Hamburguesas,🇩 Sushi
+¿Cuál es tu bebida favorita?|🅰️ Agua,🅱️ Refresco,🇨 Café,🇩 Té
+¿Qué tipo de música te gusta más?|🅰️ Rock,🅱️ Pop,🇨 Electrónica,🇩 Clásica
+¿Prefieres leer libros o ver películas?|🅰️ Libros,🅱️ Películas,🇨 Series,🇩 Ninguno
+¿Cuál es tu estación favorita del año?|🅰️ Primavera,🅱️ Verano,🇨 Otoño,🇩 Invierno
+¿Qué prefieres para relajarte?|🅰️ Dormir,🅱️ Escuchar música,🇨 Meditar,🇩 Jugar videojuegos
+¿Prefieres viajar a la playa o a la montaña?|🅰️ Playa,🅱️ Montaña,🇨 Ciudad,🇩 Campo
+¿Cuál es tu deporte favorito?|🅰️ Fútbol,🅱️ Baloncesto,🇨 Natación,🇩 Tenis
+¿Qué prefieres para desayunar?|🅰️ Panqueques,🅱️ Huevos,🇨 Cereal,🇩 Fruta
+¿Prefieres gatos o perros?|🅰️ Gatos,🅱️ Perros,🇨 Ambos,🇩 Ninguno
+¿Cuál es tu color favorito?|🅰️ Azul,🅱️ Rojo,🇨 Verde,🇩 Amarillo
+¿Qué prefieres hacer en tu tiempo libre?|🅰️ Leer,🅱️ Salir con amigos,🇨 Ver series,🇩 Hacer ejercicio
+¿Prefieres el frío o el calor?|🅰️ Frío,🅱️ Calor,🇨 Templado,🇩 No importa
+¿Cuál es tu comida favorita?|🅰️ Pasta,🅱️ Pizza,🇨 Sushi,🇩 Tacos
+¿Qué prefieres para transportarte?|🅰️ Auto,🅱️ Bicicleta,🇨 Transporte público,🇩 Caminar
+¿Prefieres el día o la noche?|🅰️ Día,🅱️ Noche,🇨 Ambos,🇩 No importa
+¿Cuál es tu género de películas favorito?|🅰️ Acción,🅱️ Comedia,🇨 Terror,🇩 Ciencia ficción
+¿Qué prefieres para divertirte?|🅰️ Videojuegos,🅱️ Salir con amigos,🇨 Leer,🇩 Ver series
+¿Prefieres comida dulce o salada?|🅰️ Dulce,🅱️ Salada,🇨 Ambas,🇩 Ninguna
+¿Cuál es tu tipo de clima favorito?|🅰️ Soleado,🅱️ Lluvioso,🇨 Nublado,🇩 Nevado
