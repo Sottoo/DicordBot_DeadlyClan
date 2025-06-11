@@ -6,7 +6,7 @@ from discord.ext import commands
 @commands.command(name="trivia")
 async def trivia(ctx):
     preguntas = []
-    with open("d:\\BOT CORD_Deadly\\Trivia_Preguntas.txt", "r", encoding="utf-8") as archivo:
+    with open("Trivia_Preguntas.txt", "r", encoding="utf-8") as archivo:
         for linea in archivo:
             partes = linea.strip().split("|")
             preguntas.append({
