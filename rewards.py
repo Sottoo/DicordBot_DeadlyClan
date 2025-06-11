@@ -266,6 +266,14 @@ def setup_rewards_commands(bot: commands.Bot):
 
     @bot.event
     async def on_message(message):
+        # Mensaje de depuración para confirmar que se ejecuta on_message
+        print(f"DEBUG: Mensaje recibido de {message.author.name} en {message.channel.name}. Contenido: {message.content}")
+
+        # Ignorar mensajes de bots
+        if message.author.bot:
+            print("DEBUG: Mensaje ignorado porque es de un bot.")
+            return
+
         # Agregar XP por mensaje
         xp_per_message = 1  # Cambiar a 1 XP por mensaje
         user_id = message.author.id
