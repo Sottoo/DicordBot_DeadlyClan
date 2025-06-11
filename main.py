@@ -6,30 +6,27 @@ from clear import setup_commands as setup_clear_commands
 from avisos import setup_avisos
 from spam import setup_spam_commands, detect_spam
 from antilinks import setup_antilinks, check_links
-from rewards import setup_rewards_commands, add_xp
+from rewards import setup_rewards_commands
 from Trivia import trivia
 from sondeos import sondeo
 from cringe import setup_cringe_commands
 from bromalocal import setup_bromalocal_commands
 from help import setup as setup_help_commands
-from musica import setup
+from musica import setup as setup_music_commands
 import os
 import asyncio
-import time
 import threading
 from flask import Flask
 
-
+# Configuración de intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
 intents.guilds = True
 intents.members = True
 
-bot = commands.Bot(
-    command_prefix='!',
-    intents=intents
-)
+# Instancia del bot
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Registrar comandos y eventos
 setup_commands(bot)
@@ -42,41 +39,33 @@ setup_rewards_commands(bot)
 setup_cringe_commands(bot)
 setup_bromalocal_commands(bot)
 setup_help_commands(bot)
-setup(bot)  # Registrar comandos de música
 bot.add_command(trivia)
 bot.add_command(sondeo)
 
-
+# Evento on_ready
 @bot.event
 async def on_ready():
-    await bot.change_presence(
-        activity=discord.Game(
-            name="Moderando Deadly Clan"
-        )
-    )
+    await bot.change_presence(activity=discord.Game(name="Moderando Deadly Clan"))
     print(f"Bot conectado como {bot.user} (ID: {bot.user.id})")
     print("Conectado a los siguientes servidores:")
     for guild in bot.guilds:
         print(f"- {guild.name} (ID: {guild.id})")
 
+# Evento on_message
 @bot.event
 async def on_message(message):
-    # Ignorar mensajes de bots
     if message.author.bot:
         return
 
-    # Llamar a las funciones específicas de cada módulo
-    await detect_spam(message)  # Desde spam.py
-    await check_links(message)  # Desde antilinks.py
+    await detect_spam(message)
+    await check_links(message)
 
-    # Agregar XP por mensaje
-    from rewards import add_xp  # Importar aquí para evitar conflictos circulares
-    await add_xp(message.author, 1, message.channel)  # 1 XP por mensaje
+    from rewards import add_xp
+    await add_xp(message.author, 1, message.channel)
 
-    # Procesar comandos después de manejar el mensaje
     await bot.process_commands(message)
 
-
+# Servidor web Flask para mantener el bot activo (opcional en servicios como Replit)
 app = Flask(__name__)
 
 @app.route("/")
@@ -86,29 +75,23 @@ def home():
 def run_webserver():
     app.run(host="0.0.0.0", port=8080)
 
-# Iniciar el bot y el servidor web
+# Función principal para iniciar el bot
 async def start_bot():
     try:
-        # Leer el token desde las variables de entorno
         token = os.getenv("DISCORD_TOKEN")
         if not token:
-            raise ValueError("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala correctamente.")
+            raise ValueError("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada.")
 
-        # Registrar comandos de música de forma asíncrona
-        await setup(bot)
+        await setup_music_commands(bot)  # Registrar comandos de música
+        await bot.start(token)
 
-        # Ejecutar el bot
-        await bot.start(token)  # Usar bot.start en lugar de bot.run para evitar conflictos con asyncio.run()
     except discord.errors.HTTPException as e:
-        print(f"⚠️ Error de conexión: {e}. Verifica el token y los permisos del bot.")
+        print(f"⚠️ Error de conexión: {e}")
     except ValueError as e:
         print(e)
     except Exception as e:
         print(f"⚠️ Error inesperado: {e}")
 
 if __name__ == "__main__":
-    # Ejecutar el servidor web en un hilo separado
     threading.Thread(target=run_webserver).start()
-
-    # Iniciar el bot
-    asyncio.get_event_loop().run_until_complete(start_bot())  # Usar run_until_complete para manejar la función asíncrona
+    asyncio.run(start_bot())
