@@ -27,24 +27,21 @@ class Music(commands.Cog):
     @commands.command(name="join")
     async def join(self, ctx):
         """Unirse al canal de voz del usuario."""
-        try:
-            if ctx.author.voice:
-                channel = ctx.author.voice.channel
+        if ctx.author.voice:
+            channel = ctx.author.voice.channel
+            if ctx.voice_client is None:
                 self.voice_client = await channel.connect()
                 await ctx.send(f"✅ Me he unido al canal de voz: {channel.name}")
             else:
-                await ctx.send("❌ Debes estar en un canal de voz para usar este comando.")
-        except RuntimeError as e:
-            if "PyNaCl library needed" in str(e):
-                await ctx.send("⚠️ Error: La biblioteca PyNaCl no está instalada. Por favor, instálala usando `pip install pynacl`.")
-            else:
-                await ctx.send(f"⚠️ Error inesperado: {e}")
+                await ctx.send("⚠️ Ya estoy en un canal de voz.")
+        else:
+            await ctx.send("❌ Debes estar en un canal de voz para usar este comando.")
 
     @commands.command(name="leave")
     async def leave(self, ctx):
         """Salir del canal de voz."""
-        if self.voice_client:
-            await self.voice_client.disconnect()
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
             self.voice_client = None
             await ctx.send("✅ He salido del canal de voz.")
         else:
@@ -53,8 +50,8 @@ class Music(commands.Cog):
     @commands.command(name="play")
     async def play(self, ctx, *, url):
         """Reproducir música desde una URL de YouTube."""
-        if not self.voice_client:
-            await ctx.send("❌ Primero usa el comando `!join` para que me una a un canal de voz.")
+        if ctx.voice_client is None:
+            await ctx.send("❌ Usa `!join` antes para que me una al canal de voz.")
             return
 
         try:
@@ -63,19 +60,20 @@ class Music(commands.Cog):
             url2 = info['url']
             title = info.get('title', 'Audio desconocido')
 
-            self.voice_client.play(discord.FFmpegPCMAudio(url2, **ffmpeg_options))
+            ctx.voice_client.play(discord.FFmpegPCMAudio(url2, **ffmpeg_options))
             await ctx.send(f"🎶 Reproduciendo: **{title}**")
         except Exception as e:
-            await ctx.send(f"⚠️ Error al reproducir la música: {e}")
+            await ctx.send(f"⚠️ Error al reproducir música: {e}")
 
     @commands.command(name="stop")
     async def stop(self, ctx):
         """Detener la música."""
-        if self.voice_client and self.voice_client.is_playing():
-            self.voice_client.stop()
+        if ctx.voice_client and ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
             await ctx.send("⏹️ Música detenida.")
         else:
             await ctx.send("❌ No hay música reproduciéndose actualmente.")
 
+# Setup para agregar el cog
 async def setup(bot):
-    await bot.add_cog(Music(bot))  # Usar await para agregar el cog correctamente
+    await bot.add_cog(Music(bot))
