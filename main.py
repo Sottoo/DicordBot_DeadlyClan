@@ -14,6 +14,10 @@ from bromalocal import setup_bromalocal_commands
 from help import setup as setup_help_commands
 from Economia.economia import setup as setup_economia_commands
 from Economia.cartel import setup as setup_cartel_commands
+import threading
+from webserver import run as run_webserver
+import os
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -69,11 +73,13 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-# Iniciar el bot
+# Iniciar el bot y el servidor web
 if __name__ == "__main__":
     try:
-        with open("token.txt", "r") as token_file:
-            token = token_file.read().strip()
+        # Ejecutar el servidor web en un hilo separado
+        threading.Thread(target=run_webserver).start()
+
+        token = os.environ["DISCORD_TOKEN"] 
         bot.run(token)
-    except FileNotFoundError:
-        print("⚠️ Archivo 'token.txt' no encontrado. Por favor, crea este archivo y coloca el token del bot dentro.")
+    except KeyError:
+        print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
