@@ -16,6 +16,7 @@ from musica import setup
 import os
 import asyncio
 import time
+import threading
 from flask import Flask
 
 
@@ -86,12 +87,15 @@ def run_webserver():
     app.run(host="0.0.0.0", port=8080)
 
 # Iniciar el bot y el servidor web
-def start_bot():
+async def start_bot():
     try:
         # Leer el token desde las variables de entorno
         token = os.getenv("DISCORD_TOKEN")
         if not token:
             raise ValueError("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala correctamente.")
+
+        # Registrar comandos de música de forma asíncrona
+        await setup(bot)
 
         bot.run(token)  # Discord.py maneja automáticamente las reconexiones
     except discord.errors.HTTPException as e:
@@ -106,4 +110,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_webserver).start()
 
     # Iniciar el bot
-    start_bot()
+    asyncio.run(start_bot())  # Usar asyncio.run para manejar la función asíncrona
