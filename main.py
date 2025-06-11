@@ -71,28 +71,16 @@ async def on_message(message):
 
 
 # Iniciar el bot y el servidor web
+def start_bot():
+    try:
+        token = os.environ["DISCORD_TOKEN"]
+        bot.run(token)
+    except KeyError:
+        print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
+
 if __name__ == "__main__":
-    async def main():
-        try:
-            # Ejecutar el servidor web en un hilo separado
-            threading.Thread(target=run_webserver).start()
+    # Ejecutar el servidor web en un hilo separado
+    threading.Thread(target=run_webserver).start()
 
-            token = os.environ["DISCORD_TOKEN"]
-            max_retries = 5  # Número máximo de intentos de reconexión
-            retries = 0
-
-            while retries < max_retries:
-                try:
-                    bot.run(token)
-                    break  # Salir del bucle si bot.run termina sin excepción
-                except discord.errors.HTTPException as e:
-                    print(f"⚠️ Error de conexión: {e}. Intentando reconectar en 5 minutos...")
-                    retries += 1
-                    await asyncio.sleep(300)  # Esperar 5 minutos antes de intentar reconectar
-                except RuntimeError as e:
-                    print(f"⚠️ Error de ejecución: {e}. Cerrando sesión.")
-                    break
-        except KeyError:
-            print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
-
-    asyncio.run(main())
+    # Iniciar el bot
+    start_bot()
