@@ -1,0 +1,30 @@
+¿Cuántos agentes hay actualmente en Valorant?|A) 15,B) 20,C) 22,D) 25|C
+¿Cuál es el nombre del mapa que tiene teleportadores?|A) Bind,B) Haven,C) Icebox,D) Split|A
+¿Qué habilidad permite a Jett desplazarse rápidamente?|A) Cloudburst,B) Updraft,C) Tailwind,D) Blade Storm|C
+¿Cuál es el rango más alto en Valorant?|A) Diamante,B) Inmortal,C) Radiante,D) Platino|C
+¿Cuál es el nombre del mapa más reciente en Valorant?|A) Pearl,B) Fracture,C) Lotus,D) Breeze|C
+¿Qué agente tiene la habilidad "Recon Bolt"?|A) Sova,B) Cypher,C) Skye,D) Fade|A
+¿Cuál es el nombre de la pistola inicial en Valorant?|A) Ghost,B) Classic,C) Sheriff,D) Frenzy|B
+¿Qué agente puede colocar una torreta?|A) Killjoy,B) Cypher,C) Chamber,D) Sage|A
+¿Cuál es el costo de la habilidad "Operator"?|A) 4500,B) 5000,C) 4700,D) 4900|C
+¿Qué agente tiene la habilidad "Leer"?|A) Reyna,B) Jett,C) Phoenix,D) Raze|A
+¿Cuál es el nombre del mapa que tiene tres sitios para plantar la Spike?|A) Haven,B) Split,C) Icebox,D) Bind|A
+¿Qué habilidad permite a Phoenix curarse?|A) Hot Hands,B) Blaze,C) Curveball,D) Run It Back|A
+¿Cuál es el nombre del arma más cara en Valorant?|A) Vandal,B) Operator,C) Phantom,D) Odin|B
+¿Qué agente tiene la habilidad "Stim Beacon"?|A) Brimstone,B) Omen,C) Astra,D) Harbor|A
+¿Cuál es el nombre del mapa que tiene una cascada en su diseño?|A) Lotus,B) Breeze,C) Icebox,D) Fracture|A
+¿Qué agente tiene la habilidad "Paranoia"?|A) Omen,B) Astra,C) Harbor,D) Viper|A
+¿Cuál es el nombre del mapa que tiene una base submarina?|A) Pearl,B) Icebox,C) Breeze,D) Fracture|A
+¿Qué habilidad permite a Raze lanzar explosivos?|A) Boom Bot,B) Blast Pack,C) Paint Shells,D) Showstopper|B
+¿Cuál es el costo de la habilidad "Vandal"?|A) 2900,B) 2500,C) 2700,D) 3000|C
+¿Qué agente tiene la habilidad "Guiding Light"?|A) Skye,B) Fade,C) Cypher,D) Sage|A
+¿Cuál es el nombre del mapa que tiene una estructura central giratoria?|A) Fracture,B) Lotus,C) Split,D) Haven|B
+¿Qué habilidad permite a Cypher colocar cámaras de vigilancia?|A) Spycam,B) Trapwire,C) Neural Theft,D) Cyber Cage|A
+¿Cuál es el nombre del arma que dispara ráfagas de tres balas?|A) Bulldog,B) Spectre,C) Phantom,D) Guardian|A
+¿Qué agente tiene la habilidad "Toxic Screen"?|A) Viper,B) Astra,C) Harbor,D) Omen|A
+¿Cuál es el nombre del mapa que tiene una zona de nieve?|A) Icebox,B) Breeze,C) Haven,D) Split|A
+¿Qué habilidad permite a Chamber colocar un teletransportador?|A) Trademark,B) Rendezvous,C) Headhunter,D) Tour de Force|B
+¿Cuál es el costo de la habilidad "Sheriff"?|A) 800,B) 900,C) 700,D) 600|A
+¿Qué agente tiene la habilidad "Gravity Well"?|A) Astra,B) Omen,C) Harbor,D) Brimstone|A
+¿Cuál es el nombre del mapa que tiene una zona desértica?|A) Bind,B) Breeze,C) Icebox,D) Haven|B
+¿Qué habilidad permite a Sage revivir a un compañero?|A) Resurrection,B) Barrier Orb,C) Slow Orb,D) Healing Orb|A
