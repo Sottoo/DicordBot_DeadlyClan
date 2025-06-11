@@ -15,6 +15,7 @@ from help import setup as setup_help_commands
 import threading
 from webserver import run as run_webserver
 import os
+import asyncio
 
 
 intents = discord.Intents.default()
@@ -75,7 +76,12 @@ if __name__ == "__main__":
         # Ejecutar el servidor web en un hilo separado
         threading.Thread(target=run_webserver).start()
 
-        token = os.environ["DISCORD_TOKEN"] 
-        bot.run(token)
+        token = os.environ["DISCORD_TOKEN"]
+        while True:
+            try:
+                bot.run(token)
+            except discord.errors.HTTPException as e:
+                print(f"⚠️ Error de conexión: {e}. Intentando reconectar en 60 segundos...")
+                asyncio.sleep(60)  # Esperar antes de intentar reconectar
     except KeyError:
         print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
