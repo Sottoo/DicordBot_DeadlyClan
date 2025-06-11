@@ -6,4 +6,4 @@ pytz
 aiohttp
 async-timeout
 youtube_dl
-PyNaCl
+pynacl
