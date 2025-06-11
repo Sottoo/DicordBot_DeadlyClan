@@ -3,3 +3,5 @@ flask
 pillow
 requests
 pytz
+aiohttp
+async-timeout
