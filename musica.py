@@ -1,114 +1,81 @@
 import discord
 from discord.ext import commands
-from commands import setup_commands
-from events import setup_events
-from clear import setup_commands as setup_clear_commands
-from avisos import setup_avisos
-from spam import setup_spam_commands, detect_spam
-from antilinks import setup_antilinks, check_links
-from rewards import setup_rewards_commands, add_xp
-from Trivia import trivia
-from sondeos import sondeo
-from cringe import setup_cringe_commands
-from bromalocal import setup_bromalocal_commands
-from help import setup as setup_help_commands
-from musica import setup
-import os
+import youtube_dl
 import asyncio
-import time
-import threading
-from flask import Flask
 
+# Configuración de youtube_dl
+youtube_dl.utils.bug_reports_message = lambda: ""
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'extractaudio': True,
+    'audioformat': 'mp3',
+    'noplaylist': True,
+    'quiet': True,
+    'default_search': 'auto',
+}
+ffmpeg_options = {
+    'options': '-vn',
+}
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.reactions = True
-intents.guilds = True
-intents.members = True
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
-bot = commands.Bot(
-    command_prefix='!',
-    intents=intents
-)
+class Music(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.voice_client = None
 
-# Registrar comandos y eventos
-setup_commands(bot)
-setup_events(bot)
-setup_clear_commands(bot)
-setup_avisos(bot)
-setup_spam_commands(bot)
-setup_antilinks(bot)
-setup_rewards_commands(bot)
-setup_cringe_commands(bot)
-setup_bromalocal_commands(bot)
-setup_help_commands(bot)
-setup(bot)  # Registrar comandos de música
-bot.add_command(trivia)
-bot.add_command(sondeo)
+    @commands.command(name="join")
+    async def join(self, ctx):
+        """Unirse al canal de voz del usuario."""
+        try:
+            if ctx.author.voice:
+                channel = ctx.author.voice.channel
+                self.voice_client = await channel.connect()
+                await ctx.send(f"✅ Me he unido al canal de voz: {channel.name}")
+            else:
+                await ctx.send("❌ Debes estar en un canal de voz para usar este comando.")
+        except RuntimeError as e:
+            if "PyNaCl library needed" in str(e):
+                await ctx.send("⚠️ Error: La biblioteca PyNaCl no está instalada. Por favor, instálala usando `pip install pynacl`.")
+            else:
+                await ctx.send(f"⚠️ Error inesperado: {e}")
 
+    @commands.command(name="leave")
+    async def leave(self, ctx):
+        """Salir del canal de voz."""
+        if self.voice_client:
+            await self.voice_client.disconnect()
+            self.voice_client = None
+            await ctx.send("✅ He salido del canal de voz.")
+        else:
+            await ctx.send("❌ No estoy en ningún canal de voz.")
 
-@bot.event
-async def on_ready():
-    await bot.change_presence(
-        activity=discord.Game(
-            name="Moderando Deadly Clan"
-        )
-    )
-    print(f"Bot conectado como {bot.user} (ID: {bot.user.id})")
-    print("Conectado a los siguientes servidores:")
-    for guild in bot.guilds:
-        print(f"- {guild.name} (ID: {guild.id})")
+    @commands.command(name="play")
+    async def play(self, ctx, *, url):
+        """Reproducir música desde una URL de YouTube."""
+        if not self.voice_client:
+            await ctx.send("❌ Primero usa el comando `!join` para que me una a un canal de voz.")
+            return
 
-@bot.event
-async def on_message(message):
-    # Ignorar mensajes de bots
-    if message.author.bot:
-        return
+        try:
+            await ctx.send("🔍 Buscando la canción...")
+            info = ytdl.extract_info(url, download=False)
+            url2 = info['url']
+            title = info.get('title', 'Audio desconocido')
 
-    # Llamar a las funciones específicas de cada módulo
-    await detect_spam(message)  # Desde spam.py
-    await check_links(message)  # Desde antilinks.py
+            self.voice_client.play(discord.FFmpegPCMAudio(url2, **ffmpeg_options))
+            await ctx.send(f"🎶 Reproduciendo: **{title}**")
+        except Exception as e:
+            await ctx.send(f"⚠️ Error al reproducir la música: {e}")
 
-    # Agregar XP por mensaje
-    from rewards import add_xp  # Importar aquí para evitar conflictos circulares
-    await add_xp(message.author, 1, message.channel)  # 1 XP por mensaje
+    @commands.command(name="stop")
+    async def stop(self, ctx):
+        """Detener la música."""
+        if self.voice_client and self.voice_client.is_playing():
+            self.voice_client.stop()
+            await ctx.send("⏹️ Música detenida.")
+        else:
+            await ctx.send("❌ No hay música reproduciéndose actualmente.")
 
-    # Procesar comandos después de manejar el mensaje
-    await bot.process_commands(message)
-
-
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "El bot está activo y funcionando correctamente."
-
-def run_webserver():
-    app.run(host="0.0.0.0", port=8080)
-
-# Iniciar el bot y el servidor web
-async def start_bot():
-    try:
-        # Leer el token desde las variables de entorno
-        token = os.getenv("DISCORD_TOKEN")
-        if not token:
-            raise ValueError("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala correctamente.")
-
-        # Registrar comandos de música de forma asíncrona
-        await setup(bot)
-
-        # Ejecutar el bot
-        await bot.start(token)  # Usar bot.start en lugar de bot.run para evitar conflictos con asyncio.run()
-    except discord.errors.HTTPException as e:
-        print(f"⚠️ Error de conexión: {e}. Verifica el token y los permisos del bot.")
-    except ValueError as e:
-        print(e)
-    except Exception as e:
-        print(f"⚠️ Error inesperado: {e}")
-
-if __name__ == "__main__":
-    # Ejecutar el servidor web en un hilo separado
-    threading.Thread(target=run_webserver).start()
-
-    # Iniciar el bot
-    asyncio.get_event_loop().run_until_complete(start_bot())  # Usar run_until_complete para manejar la función asíncrona
+async def setup(bot):
+    await bot.add_cog(Music(bot))  # Usar await para agregar el cog correctamente
