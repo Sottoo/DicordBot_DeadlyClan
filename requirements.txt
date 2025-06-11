@@ -1,4 +1,3 @@
 discord.py
-pillow
 flask
-pip install -r requirements.txt
+
