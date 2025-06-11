@@ -39,7 +39,6 @@ setup_rewards_commands(bot)
 setup_cringe_commands(bot)
 setup_bromalocal_commands(bot)
 setup_help_commands(bot)  
-setup_cartel_commands(bot)
 bot.add_command(trivia)
 bot.add_command(sondeo)
 
