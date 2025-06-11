@@ -12,8 +12,6 @@ from sondeos import sondeo
 from cringe import setup_cringe_commands
 from bromalocal import setup_bromalocal_commands
 from help import setup as setup_help_commands
-from Economia.economia import setup as setup_economia_commands
-from Economia.cartel import setup as setup_cartel_commands
 import threading
 from webserver import run as run_webserver
 import os
@@ -41,7 +39,6 @@ setup_rewards_commands(bot)
 setup_cringe_commands(bot)
 setup_bromalocal_commands(bot)
 setup_help_commands(bot)  
-setup_economia_commands(bot)
 setup_cartel_commands(bot)
 bot.add_command(trivia)
 bot.add_command(sondeo)
