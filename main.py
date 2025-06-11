@@ -75,13 +75,9 @@ async def on_message(message):
 def start_bot():
     try:
         token = os.environ["DISCORD_TOKEN"]
-        while True:
-            try:
-                bot.run(token)
-                break  # Salir del bucle si bot.run termina sin excepción
-            except discord.errors.HTTPException as e:
-                print(f"⚠️ Error de conexión: {e}. Intentando reconectar en 5 minutos...")
-                time.sleep(300)  # Esperar 5 minutos antes de intentar reconectar
+        bot.run(token)  # Discord.py maneja automáticamente las reconexiones
+    except discord.errors.HTTPException as e:
+        print(f"⚠️ Error de conexión: {e}. Verifica el token y los permisos del bot.")
     except KeyError:
         print("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada. Por favor, configúrala en Render.")
 
