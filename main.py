@@ -6,27 +6,28 @@ from clear import setup_commands as setup_clear_commands
 from avisos import setup_avisos
 from spam import setup_spam_commands, detect_spam
 from antilinks import setup_antilinks, check_links
-from rewards import setup_rewards_commands
+from rewards import setup_rewards_commands, add_xp
 from Trivia import trivia
 from sondeos import sondeo
 from cringe import setup_cringe_commands
 from bromalocal import setup_bromalocal_commands
 from help import setup as setup_help_commands
-from musica import setup as setup_music_commands
 import os
 import asyncio
+import time
 import threading
 from flask import Flask
 
-# Configuración de intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
 intents.guilds = True
 intents.members = True
 
-# Instancia del bot
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(
+    command_prefix='!',
+    intents=intents
+)
 
 # Registrar comandos y eventos
 setup_commands(bot)
@@ -42,73 +43,73 @@ setup_help_commands(bot)
 bot.add_command(trivia)
 bot.add_command(sondeo)
 
-# Evento on_ready
+
 @bot.event
-async def on_ready():
-    await bot.change_presence(activity=discord.Game(name="Moderando Deadly Clan"))
+async def on_ready(): 
+    await bot.change_presence(
+        activity=discord.Game(
+            name="Moderando Deadly Clan"
+        )
+    )
     print(f"Bot conectado como {bot.user} (ID: {bot.user.id})")
     print("Conectado a los siguientes servidores:")
     for guild in bot.guilds:
         print(f"- {guild.name} (ID: {guild.id})")
 
-# Evento on_message
 @bot.event
 async def on_message(message):
+    # Ignorar mensajes de bots
     if message.author.bot:
         return
 
-    await detect_spam(message)
-    await check_links(message)
+    # Llamar a las funciones específicas de cada módulo
+    await detect_spam(message)  # Desde spam.py
+    await check_links(message)  # Desde antilinks.py
 
-    from rewards import add_xp
-    await add_xp(message.author, 1, message.channel)
+    # Agregar XP por mensaje
+    from rewards import add_xp  # Importar aquí para evitar conflictos circulares
+    await add_xp(message.author, 1, message.channel)  # 1 XP por mensaje
 
+    # Procesar comandos después de manejar el mensaje
     await bot.process_commands(message)
 
-# Registra los comandos de recompensas
-setup_rewards_commands(bot)
 
-# Flask app para mantener activo
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Bot activo."
+    return "El bot está activo y funcionando correctamente."
 
 def run_webserver():
     app.run(host="0.0.0.0", port=8080)
 
-async def autosave_xp():
-    await bot.wait_until_ready()
-    while not bot.is_closed():
-        save_user_xp()
-        await asyncio.sleep(60)
-
-@bot.event
-async def on_ready():
-    print(f"{bot.user} listo. Conectado a {len(bot.guilds)} servidores.")
-    bot.loop.create_task(autosave_xp())
-
-@bot.event
-async def on_disconnect():
-    print("🔌 Bot desconectado: guardando XP...")
-    save_user_xp()
-
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    await add_xp(message.author, 1, message.channel)
-    await bot.process_commands(message)
-
+# Iniciar el bot y el servidor web
 async def start_bot():
-    token = os.getenv("DISCORD_TOKEN")
-    if not token:
-        raise ValueError("🔴 Falta DISCORD_TOKEN")
-    bot.loop.create_task(autosave_xp())
-    await bot.start(token)
+    try:
+        # Leer el token desde la variable de entorno DISCORD_TOKEN (Railway, etc.)
+        token = os.environ.get("DISCORD_TOKEN")
+        if not token:
+            # Si no está en variable de entorno, intenta leer desde token.txt (opcional)
+            if os.path.exists("token.txt"):
+                with open("token.txt", "r") as token_file:
+                    token = token_file.read().strip()
+        if not token:
+            raise ValueError("⚠️ No se encontró el token. Define la variable de entorno DISCORD_TOKEN o coloca el token en 'token.txt'.")
+
+        # Ejecutar el bot
+        await bot.start(token)
+    except FileNotFoundError:
+        print("⚠️ Archivo 'token.txt' no encontrado. Por favor, crea el archivo o define la variable de entorno DISCORD_TOKEN.")
+    except discord.errors.HTTPException as e:
+        print(f"⚠️ Error de conexión: {e}. Verifica el token y los permisos del bot.")
+    except ValueError as e:
+        print(e)
+    except Exception as e:
+        print(f"⚠️ Error inesperado: {e}")
 
 if __name__ == "__main__":
+    # Ejecutar el servidor web en un hilo separado
     threading.Thread(target=run_webserver).start()
-    asyncio.run(start_bot())
+
+    # Iniciar el bot
+    asyncio.get_event_loop().run_until_complete(start_bot())  # Usar run_until_complete para manejar la función asíncrona
