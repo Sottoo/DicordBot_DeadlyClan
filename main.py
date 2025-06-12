@@ -112,4 +112,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_webserver).start()
 
     # Iniciar el bot
-    asyncio.get_event_loop().run_until_complete(start_bot())  # Usar run_until_complete para manejar la función asíncrona
+    asyncio.run(start_bot())
