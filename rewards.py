@@ -68,18 +68,19 @@ async def load_user_xp_discord(bot):
     if not channel:
         print("⚠️ No se encontró el canal de backup para XP.")
         return
-    async for msg in channel.history(limit=10):
-        if msg.author == bot.user and msg.content.startswith("XP_BACKUP:"):
+    async for msg in channel.history(limit=20):  # Busca en los últimos 20 mensajes
+        if msg.content.startswith("XP_BACKUP:"):
             try:
                 content = msg.content
                 json_str = content.split("```json")[1].split("```")[0]
                 data = json.loads(json_str)
                 for user_id, xp in data.items():
                     user_xp[int(user_id)] = xp
-                print("✅ XP cargado desde Discord.")
+                print(f"✅ XP restaurado desde Discord (mensaje ID: {msg.id}).")
             except Exception as e:
                 print(f"⚠️ Error al cargar XP desde Discord: {e}")
             return
+    print("⚠️ No se encontró ningún respaldo XP_BACKUP en el canal de backup.")
 
 # Cargar al iniciar
 load_user_xp()
