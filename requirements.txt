@@ -6,3 +6,4 @@ pytz
 aiohttp
 async-timeout
 aiosqlite
+asyncpg
