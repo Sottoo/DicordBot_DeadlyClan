@@ -1,14 +1,41 @@
 import discord
 from discord.ext import commands
-from collections import defaultdict
 import json
 import os
+import asyncpg
 
-# Archivo donde se guardan los datos
-DATA_FILE = "user_xp.json"
+# URL de conexión de Railway (usa tu variable de entorno o ponla aquí directamente)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:uiaaDOthTpvfNYuaIHQCsVlxfeIdoqHt@yamabiko.proxy.rlwy.net:45928/railway")
 
-# Diccionario de XP de usuarios
-user_xp = defaultdict(int)
+db_pool = None  # Pool global
+
+async def init_db():
+    global db_pool
+    db_pool = await asyncpg.create_pool(DATABASE_URL)
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_xp (
+                user_id BIGINT PRIMARY KEY,
+                xp INTEGER NOT NULL
+            );
+        """)
+
+async def get_xp(user_id):
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT xp FROM user_xp WHERE user_id = $1", user_id)
+        return row["xp"] if row else 0
+
+async def set_xp(user_id, xp):
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO user_xp (user_id, xp) VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE SET xp = EXCLUDED.xp
+        """, user_id, xp)
+
+async def top_xp(limit=10):
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT user_id, xp FROM user_xp ORDER BY xp DESC LIMIT $1", limit)
+        return [(r["user_id"], r["xp"]) for r in rows]
 
 # RANGOS Y RECOMPENSAS
 RANKS = [
@@ -24,102 +51,16 @@ RANKS = [
     {"name": "Legend", "xp_required": 15000, "reward": 1148105224451754095},
 ]
 
-# ID del canal de backup (pon aquí el ID real de tu canal)
-BACKUP_CHANNEL_ID = 1382537437326213211 # <-- Cambia esto por el canal de backup
-
-xp_restaurado = False  # Bandera para saber si la XP fue restaurada correctamente
-xp_listo = False       # Bandera para saber si la XP está lista para usarse
-
-# Cargar datos
-def load_user_xp():
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as file:
-                data = json.load(file)
-                for user_id, xp in data.items():
-                    user_xp[int(user_id)] = xp
-        except Exception as e:
-            print(f"⚠️ Error al cargar XP: {e}")
-
-# Guardar datos
-def save_user_xp():
-    try:
-        with open(DATA_FILE, "w", encoding="utf-8") as file:
-            json.dump(dict(user_xp), file, ensure_ascii=False, indent=4)
-        print("✅ XP guardado.")
-    except Exception as e:
-        print(f"⚠️ Error al guardar XP: {e}")
-
-# Guardar datos en canal de Discord
-async def save_user_xp_discord(bot):
-    channel = bot.get_channel(BACKUP_CHANNEL_ID)
-    if not channel:
-        print("⚠️ No se encontró el canal de backup para XP.")
-        return
-    data = json.dumps(dict(user_xp), ensure_ascii=False, indent=4)
-    async for msg in channel.history(limit=10):
-        if msg.author == bot.user and msg.content.startswith("XP_BACKUP:"):
-            await msg.edit(content=f"XP_BACKUP:\n```json\n{data}\n```")
-            print("✅ XP guardado en Discord (editado).")
-            return
-    await channel.send(f"XP_BACKUP:\n```json\n{data}\n```")
-    print("✅ XP guardado en Discord (nuevo mensaje).")
-
-# Cargar datos desde canal de Discord
-async def esperar_canal_backup(bot):
-    # Espera hasta que el canal de backup esté disponible
-    for _ in range(20):
-        canal = bot.get_channel(BACKUP_CHANNEL_ID)
-        if canal:
-            return canal
-        await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=1))
-    return None
-
-async def load_user_xp_discord(bot):
-    global xp_restaurado, xp_listo
-    channel = await esperar_canal_backup(bot)
-    if not channel:
-        print("⚠️ No se encontró el canal de backup para XP (tras esperar).")
-        xp_listo = True
-        return
-    async for msg in channel.history(limit=20):
-        if msg.content.startswith("XP_BACKUP:"):
-            try:
-                content = msg.content
-                json_str = content.split("```json")[1].split("```")[0]
-                data = json.loads(json_str)
-                for user_id, xp in data.items():
-                    user_xp[int(user_id)] = xp
-                xp_restaurado = True
-                print(f"✅ XP restaurado desde Discord (mensaje ID: {msg.id}).")
-            except Exception as e:
-                print(f"⚠️ Error al cargar XP desde Discord: {e}")
-            break
-    else:
-        print("⚠️ No se encontró ningún respaldo XP_BACKUP en el canal de backup.")
-    xp_listo = True
-
-# Cargar al iniciar
-load_user_xp()
-
 # Sumar XP a un usuario
 async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
-    # Espera a que la XP esté lista antes de permitir sumar
-    global xp_listo
-    while not xp_listo:
-        await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=1))
     user_id = member.id
-    previous_xp = user_xp[user_id]
-    user_xp[user_id] += xp
-    print(f"[XP] {member.name}: {previous_xp} → {user_xp[user_id]}")
-    save_user_xp()
-    # Guardar automáticamente en Discord solo si la XP fue restaurada o ya existía
-    bot = channel.guild._state._get_client()
-    if bot and xp_restaurado:
-        await save_user_xp_discord(bot)
+    previous_xp = await get_xp(user_id)
+    new_xp = previous_xp + xp
+    await set_xp(user_id, new_xp)
+    print(f"[XP] {member.name}: {previous_xp} → {new_xp}")
 
     for rank in reversed(RANKS):
-        if user_xp[user_id] >= rank["xp_required"] > previous_xp:
+        if new_xp >= rank["xp_required"] > previous_xp:
             await handle_rank_up(member, rank, channel)
             break
 
@@ -148,17 +89,21 @@ async def handle_rank_up(member: discord.Member, rank: dict, channel: discord.Te
 def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="rank")
     async def check_rank(ctx):
-        sorted_users = sorted(user_xp.items(), key=lambda item: item[1], reverse=True)
+        top = await top_xp(10)
         lines = []
-        for i, (uid, xp) in enumerate(sorted_users[:10], start=1):
+        for i, (uid, xp) in enumerate(top, start=1):
             member = ctx.guild.get_member(uid)
             name = member.display_name if member else f"Usuario ({uid})"
             emoji = ["🥇", "🥈", "🥉"][i - 1] if i <= 3 else "🏅"
             lines.append(f"{emoji} **#{i}** {name} — **{xp} XP**")
 
-        user_pos = next((i + 1 for i, (uid, _) in enumerate(sorted_users) if uid == ctx.author.id), None)
+        user_xp_val = await get_xp(ctx.author.id)
+        # Para posición real, consulta todos los usuarios (puedes optimizar esto)
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch("SELECT user_id FROM user_xp ORDER BY xp DESC")
+            user_pos = next((i+1 for i, r in enumerate(rows) if r["user_id"] == ctx.author.id), None)
         if user_pos and user_pos > 10:
-            lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp[ctx.author.id]} XP**")
+            lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp_val} XP**")
 
         embed = discord.Embed(
             title="🏆 Ranking de XP",
@@ -172,7 +117,7 @@ def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="progreso")
     async def progreso(ctx, member: discord.Member = None):
         member = member or ctx.author
-        xp = user_xp.get(member.id, 0)
+        xp = await get_xp(member.id)
         next_rank = next((r for r in RANKS if xp < r["xp_required"]), None)
 
         if next_rank:
@@ -205,29 +150,9 @@ def setup_rewards_commands(bot: commands.Bot):
 
         await ctx.send(embed=embed)
 
-    @bot.command(name="backup_xp")
-    @commands.has_permissions(administrator=True)
-    async def backup_xp(ctx):
-        await save_user_xp_discord(ctx.bot)
-        await ctx.send("XP respaldado en el canal de backup.")
-
-    @bot.command(name="restore_xp")
-    @commands.has_permissions(administrator=True)
-    async def restore_xp(ctx):
-        await load_user_xp_discord(ctx.bot)
-        save_user_xp()
-        await ctx.send("XP restaurado desde el canal de backup.")
-
     @bot.event
     async def on_ready():
-        global xp_restaurado, xp_listo
-        # Si no existe el archivo local, intenta restaurar desde Discord
-        if not os.path.exists(DATA_FILE):
-            await load_user_xp_discord(bot)
-            save_user_xp()
-        else:
-            xp_restaurado = True
-            xp_listo = True
+        await init_db()
         print(f"Bot listo como {bot.user}")
 
     # Manejo de errores de cooldown
