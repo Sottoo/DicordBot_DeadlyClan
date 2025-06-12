@@ -63,27 +63,27 @@ async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
 # Manejar subida de rango
 async def handle_rank_up(member: discord.Member, rank: dict, channel: discord.TextChannel):
     embed = discord.Embed(
-        title="🎉 ¡Has subido de rango!",
-        description=f"{member.mention}, ahora eres **{rank['name']}**.",
-        color=discord.Color.gold()
+        title="✨ ¡Ascenso de Rango!",
+        description=f"🎉 Felicidades {member.mention}, has alcanzado el rango **{rank['name']}**.",
+        color=discord.Color.from_rgb(255, 215, 0)  # Dorado brillante
     )
-    embed.set_thumbnail(url=member.avatar.url if member.avatar else None)
-    embed.add_field(name="Rango", value=rank["name"], inline=True)
+    embed.set_thumbnail(url=member.display_avatar.url if member.display_avatar else None)
+    embed.add_field(name="🏅 Nuevo Rango", value=f"**{rank['name']}**", inline=True)
 
     role = discord.utils.get(member.guild.roles, id=rank["reward"])
     if role:
         if role not in member.roles:
             await member.add_roles(role, reason="Subida de rango")
-        embed.add_field(name="Recompensa", value=f"Rol otorgado: {role.mention}", inline=True)
+        embed.add_field(name="🎁 Recompensa", value=f"Rol otorgado: {role.mention}", inline=True)
     else:
-        embed.add_field(name="Recompensa", value="No se encontró el rol 😢", inline=True)
+        embed.add_field(name="🎁 Recompensa", value="No se encontró el rol 😢", inline=True)
 
+    embed.set_footer(text="¡Sigue participando para alcanzar el siguiente rango!", icon_url="https://cdn-icons-png.flaticon.com/512/1828/1828884.png")
     await channel.send(embed=embed)
 
 # Comandos del sistema de recompensas
 def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="rank")
-    @commands.cooldown(1, 3600, commands.BucketType.user)
     async def check_rank(ctx):
         sorted_users = sorted(user_xp.items(), key=lambda item: item[1], reverse=True)
         lines = []
@@ -91,18 +91,22 @@ def setup_rewards_commands(bot: commands.Bot):
             member = ctx.guild.get_member(uid)
             name = member.display_name if member else f"Usuario ({uid})"
             emoji = ["🥇", "🥈", "🥉"][i - 1] if i <= 3 else "🏅"
-            lines.append(f"{emoji} **#{i}** {name} - **{xp} XP**")
+            lines.append(f"{emoji} **#{i}** {name} — **{xp} XP**")
 
-        # Posición del usuario si no está en el top 10
         user_pos = next((i + 1 for i, (uid, _) in enumerate(sorted_users) if uid == ctx.author.id), None)
         if user_pos and user_pos > 10:
-            lines.append(f"\n🔽 Tu posición: #{user_pos} - **{user_xp[ctx.author.id]} XP**")
+            lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp[ctx.author.id]} XP**")
 
-        embed = discord.Embed(title="🏆 Ranking de XP", description="\n".join(lines), color=discord.Color.purple())
+        embed = discord.Embed(
+            title="🏆 Ranking de XP",
+            description="\n".join(lines),
+            color=discord.Color.from_rgb(138, 43, 226)  # Morado vibrante
+        )
+        embed.set_thumbnail(url=ctx.guild.icon.url if ctx.guild.icon else None)
+        embed.set_footer(text="¡Compite y sube en el ranking!", icon_url="https://cdn-icons-png.flaticon.com/512/3135/3135715.png")
         await ctx.send(embed=embed)
 
     @bot.command(name="progreso")
-    @commands.cooldown(1, 1800, commands.BucketType.user)
     async def progreso(ctx, member: discord.Member = None):
         member = member or ctx.author
         xp = user_xp.get(member.id, 0)
@@ -116,18 +120,25 @@ def setup_rewards_commands(bot: commands.Bot):
             filled = int(progress * bar_length)
             bar = "█" * filled + "░" * (bar_length - filled)
 
-            embed = discord.Embed(title="📈 Tu progreso", color=discord.Color.blue())
-            embed.add_field(name="Rango actual", value=current_rank, inline=True)
-            embed.add_field(name="Siguiente rango", value=next_rank["name"], inline=True)
-            embed.add_field(name="XP actual", value=f"{xp} / {next_rank['xp_required']}", inline=True)
-            embed.add_field(name="Faltan", value=f"{needed_xp} XP", inline=True)
-            embed.add_field(name="Progreso", value=f"`[{bar}] {progress*100:.2f}%`", inline=False)
+            embed = discord.Embed(
+                title="📈 Progreso de Rango",
+                color=discord.Color.from_rgb(30, 144, 255)  # Azul profesional
+            )
+            embed.set_thumbnail(url=member.display_avatar.url if member.display_avatar else None)
+            embed.add_field(name="🏅 Rango actual", value=current_rank, inline=True)
+            embed.add_field(name="🎯 Siguiente rango", value=next_rank["name"], inline=True)
+            embed.add_field(name="🔢 XP actual", value=f"{xp} / {next_rank['xp_required']}", inline=True)
+            embed.add_field(name="⏳ Faltan", value=f"{needed_xp} XP", inline=True)
+            embed.add_field(name="📊 Progreso", value=f"`[{bar}] {progress*100:.2f}%`", inline=False)
+            embed.set_footer(text="¡Sigue participando para subir de rango!", icon_url="https://cdn-icons-png.flaticon.com/512/1828/1828884.png")
         else:
             embed = discord.Embed(
-                title="🎉 Rango máximo alcanzado",
-                description=f"{member.mention} ya tiene el rango **{RANKS[-1]['name']}**.",
-                color=discord.Color.green()
+                title="🏅 ¡Rango Máximo Alcanzado!",
+                description=f"🎉 {member.mention} ya tiene el rango **{RANKS[-1]['name']}**.",
+                color=discord.Color.from_rgb(50, 205, 50)  # Verde éxito
             )
+            embed.set_thumbnail(url=member.display_avatar.url if member.display_avatar else None)
+            embed.set_footer(text="¡Eres una leyenda!", icon_url="https://cdn-icons-png.flaticon.com/512/3135/3135715.png")
 
         await ctx.send(embed=embed)
 
@@ -139,10 +150,11 @@ def setup_rewards_commands(bot: commands.Bot):
             h, m = divmod(seconds, 3600)
             m, s = divmod(m, 60)
             embed = discord.Embed(
-                title="⏱️ Cooldown",
-                description=f"Espera {h}h {m}m {s}s para usar `{ctx.command.name}` de nuevo.",
-                color=discord.Color.orange()
+                title="⏱️ ¡Espera un poco!",
+                description=f"Debes esperar **{h}h {m}m {s}s** para usar `{ctx.command.name}` de nuevo.",
+                color=discord.Color.from_rgb(255, 140, 0)  # Naranja llamativo
             )
+            embed.set_footer(text="Evita el spam para mantener el sistema justo.", icon_url="https://cdn-icons-png.flaticon.com/512/565/565547.png")
             await ctx.send(embed=embed, delete_after=10)
         else:
             raise error
