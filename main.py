@@ -68,7 +68,8 @@ async def on_message(message):
 # Registra los comandos de recompensas
 setup_rewards_commands(bot)
 
-@app = Flask(__name__)
+# Flask app para mantener activo
+app = Flask(__name__)
 
 @app.route("/")
 def home():
