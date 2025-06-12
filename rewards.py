@@ -1,16 +1,17 @@
 import discord
 from discord.ext import commands
-import json
 import os
 import asyncpg
 
-# URL de conexión de Railway (usa tu variable de entorno o ponla aquí directamente)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:uiaaDOthTpvfNYuaIHQCsVlxfeIdoqHt@yamabiko.proxy.rlwy.net:45928/railway")
-
+DATABASE_URL = os.getenv("DATABASE_URL")
 db_pool = None  # Pool global
 
 async def init_db():
     global db_pool
+    if not DATABASE_URL:
+        print("❌ No se encontró la variable de entorno DATABASE_URL.")
+        return
+    print(f"Intentando conectar a la base de datos: {DATABASE_URL}")
     db_pool = await asyncpg.create_pool(DATABASE_URL)
     async with db_pool.acquire() as conn:
         await conn.execute("""
@@ -19,6 +20,7 @@ async def init_db():
                 xp INTEGER NOT NULL
             );
         """)
+    print("✅ Conexión y tabla de XP listas.")
 
 async def get_xp(user_id):
     async with db_pool.acquire() as conn:
