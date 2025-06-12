@@ -1,48 +1,48 @@
 import discord
 from discord.ext import commands
-import os
 import asyncpg
+import os
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-db_pool = None  # Pool global
+# Configuración de la base de datos (usa variables de entorno de Railway)
+DATABASE_URL = os.getenv("DATABASE_URL")  # Railway te da esta variable
+
+# Conexión global a la base de datos
+db_pool = None
 
 async def init_db():
     global db_pool
-    if not DATABASE_URL:
-        print("❌ No se encontró la variable de entorno DATABASE_URL.")
-        return False
-    print(f"Intentando conectar a la base de datos: {DATABASE_URL}")
-    try:
-        db_pool = await asyncpg.create_pool(DATABASE_URL)
-        async with db_pool.acquire() as conn:
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS user_xp (
-                    user_id BIGINT PRIMARY KEY,
-                    xp INTEGER NOT NULL
-                );
-            """)
-        print("✅ Conexión y tabla de XP listas.")
-        return True
-    except Exception as e:
-        print(f"❌ Error al conectar a la base de datos: {e}")
-        return False
+    db_pool = await asyncpg.create_pool(DATABASE_URL)
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_xp (
+                user_id BIGINT PRIMARY KEY,
+                xp INTEGER NOT NULL DEFAULT 0
+            );
+        """)
 
-async def get_xp(user_id):
+# Obtener XP de usuario
+async def get_user_xp(user_id: int):
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow("SELECT xp FROM user_xp WHERE user_id = $1", user_id)
         return row["xp"] if row else 0
 
-async def set_xp(user_id, xp):
+# Sumar XP a un usuario
+async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
+    user_id = member.id
+    previous_xp = await get_user_xp(user_id)
+    new_xp = previous_xp + xp
     async with db_pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO user_xp (user_id, xp) VALUES ($1, $2)
-            ON CONFLICT (user_id) DO UPDATE SET xp = EXCLUDED.xp
-        """, user_id, xp)
+            INSERT INTO user_xp (user_id, xp)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE SET xp = user_xp.xp + $3
+        """, user_id, xp, xp)
+    print(f"[XP] {member.name}: {previous_xp} → {new_xp}")
 
-async def top_xp(limit=10):
-    async with db_pool.acquire() as conn:
-        rows = await conn.fetch("SELECT user_id, xp FROM user_xp ORDER BY xp DESC LIMIT $1", limit)
-        return [(r["user_id"], r["xp"]) for r in rows]
+    for rank in reversed(RANKS):
+        if new_xp >= rank["xp_required"] > previous_xp:
+            await handle_rank_up(member, rank, channel)
+            break
 
 # RANGOS Y RECOMPENSAS
 RANKS = [
@@ -58,18 +58,8 @@ RANKS = [
     {"name": "Legend", "xp_required": 15000, "reward": 1148105224451754095},
 ]
 
-# Sumar XP a un usuario
-async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
-    user_id = member.id
-    previous_xp = await get_xp(user_id)
-    new_xp = previous_xp + xp
-    await set_xp(user_id, new_xp)
-    print(f"[XP] {member.name}: {previous_xp} → {new_xp}")
-
-    for rank in reversed(RANKS):
-        if new_xp >= rank["xp_required"] > previous_xp:
-            await handle_rank_up(member, rank, channel)
-            break
+# Cargar al iniciar
+# load_user_xp()
 
 # Manejar subida de rango
 async def handle_rank_up(member: discord.Member, rank: dict, channel: discord.TextChannel):
@@ -96,19 +86,18 @@ async def handle_rank_up(member: discord.Member, rank: dict, channel: discord.Te
 def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="rank")
     async def check_rank(ctx):
-        top = await top_xp(10)
-        lines = []
-        for i, (uid, xp) in enumerate(top, start=1):
-            member = ctx.guild.get_member(uid)
-            name = member.display_name if member else f"Usuario ({uid})"
-            emoji = ["🥇", "🥈", "🥉"][i - 1] if i <= 3 else "🏅"
-            lines.append(f"{emoji} **#{i}** {name} — **{xp} XP**")
-
-        user_xp_val = await get_xp(ctx.author.id)
-        # Para posición real, consulta todos los usuarios (puedes optimizar esto)
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch("SELECT user_id FROM user_xp ORDER BY xp DESC")
-            user_pos = next((i+1 for i, r in enumerate(rows) if r["user_id"] == ctx.author.id), None)
+            rows = await conn.fetch("SELECT user_id, xp FROM user_xp ORDER BY xp DESC LIMIT 10")
+            all_rows = await conn.fetch("SELECT user_id, xp FROM user_xp ORDER BY xp DESC")
+        lines = []
+        for i, row in enumerate(rows, start=1):
+            member = ctx.guild.get_member(row["user_id"])
+            name = member.display_name if member else f"Usuario ({row['user_id']})"
+            emoji = ["🥇", "🥈", "🥉"][i - 1] if i <= 3 else "🏅"
+            lines.append(f"{emoji} **#{i}** {name} — **{row['xp']} XP**")
+
+        user_pos = next((i + 1 for i, row in enumerate(all_rows) if row["user_id"] == ctx.author.id), None)
+        user_xp_val = await get_user_xp(ctx.author.id)
         if user_pos and user_pos > 10:
             lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp_val} XP**")
 
@@ -124,7 +113,7 @@ def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="progreso")
     async def progreso(ctx, member: discord.Member = None):
         member = member or ctx.author
-        xp = await get_xp(member.id)
+        xp = await get_user_xp(member.id)
         next_rank = next((r for r in RANKS if xp < r["xp_required"]), None)
 
         if next_rank:
@@ -157,14 +146,6 @@ def setup_rewards_commands(bot: commands.Bot):
 
         await ctx.send(embed=embed)
 
-    @bot.event
-    async def on_ready():
-        ok = await init_db()
-        if not ok:
-            print("❌ El bot no puede funcionar sin base de datos. Revisa tu DATABASE_URL y la conexión a Railway.")
-        else:
-            print(f"Bot listo como {bot.user}")
-
     # Manejo de errores de cooldown
     @bot.event
     async def on_command_error(ctx, error):
@@ -181,3 +162,10 @@ def setup_rewards_commands(bot: commands.Bot):
             await ctx.send(embed=embed, delete_after=10)
         else:
             raise error
+
+# Inicializar la base de datos al arrancar el bot
+async def on_startup():
+    await init_db()
+
+# En tu archivo principal, antes de bot.run(), añade:
+# bot.loop.run_until_complete(on_startup())
