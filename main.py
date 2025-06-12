@@ -6,7 +6,7 @@ from clear import setup_commands as setup_clear_commands
 from avisos import setup_avisos
 from spam import setup_spam_commands, detect_spam
 from antilinks import setup_antilinks, check_links
-from rewards import setup_rewards_commands, add_xp
+from rewards import setup_rewards_commands, add_xp, init_db
 from Trivia import trivia
 from sondeos import sondeo
 from cringe import setup_cringe_commands
@@ -86,6 +86,7 @@ def run_webserver():
 # Iniciar el bot y el servidor web
 async def start_bot():
     try:
+        await init_db()  # <-- Inicializa la base de datos antes de arrancar el bot
         # Leer el token desde la variable de entorno DISCORD_TOKEN (Railway, etc.)
         token = os.environ.get("DISCORD_TOKEN")
         if not token:
