@@ -27,6 +27,8 @@ RANKS = [
 # ID del canal de backup (pon aquí el ID real de tu canal)
 BACKUP_CHANNEL_ID = 1382537437326213211 # <-- Cambia esto por el canal de backup
 
+xp_restaurado = False  # Bandera para saber si la XP fue restaurada correctamente
+
 # Cargar datos
 def load_user_xp():
     if os.path.exists(DATA_FILE):
@@ -64,11 +66,12 @@ async def save_user_xp_discord(bot):
 
 # Cargar datos desde canal de Discord
 async def load_user_xp_discord(bot):
+    global xp_restaurado
     channel = bot.get_channel(BACKUP_CHANNEL_ID)
     if not channel:
         print("⚠️ No se encontró el canal de backup para XP.")
         return
-    async for msg in channel.history(limit=20):  # Busca en los últimos 20 mensajes
+    async for msg in channel.history(limit=20):
         if msg.content.startswith("XP_BACKUP:"):
             try:
                 content = msg.content
@@ -76,6 +79,7 @@ async def load_user_xp_discord(bot):
                 data = json.loads(json_str)
                 for user_id, xp in data.items():
                     user_xp[int(user_id)] = xp
+                xp_restaurado = True
                 print(f"✅ XP restaurado desde Discord (mensaje ID: {msg.id}).")
             except Exception as e:
                 print(f"⚠️ Error al cargar XP desde Discord: {e}")
@@ -92,9 +96,9 @@ async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
     user_xp[user_id] += xp
     print(f"[XP] {member.name}: {previous_xp} → {user_xp[user_id]}")
     save_user_xp()
-    # Guardar automáticamente en Discord
-    bot = channel.guild._state._get_client()  # Obtener instancia del bot desde el canal
-    if bot:
+    # Guardar automáticamente en Discord solo si la XP fue restaurada o ya existía
+    bot = channel.guild._state._get_client()
+    if bot and xp_restaurado:
         await save_user_xp_discord(bot)
 
     for rank in reversed(RANKS):
@@ -199,10 +203,13 @@ def setup_rewards_commands(bot: commands.Bot):
 
     @bot.event
     async def on_ready():
+        global xp_restaurado
         # Si no existe el archivo local, intenta restaurar desde Discord
         if not os.path.exists(DATA_FILE):
             await load_user_xp_discord(bot)
             save_user_xp()
+        else:
+            xp_restaurado = True  # Ya existía localmente, se puede guardar en Discord
         print(f"Bot listo como {bot.user}")
 
     # Manejo de errores de cooldown
