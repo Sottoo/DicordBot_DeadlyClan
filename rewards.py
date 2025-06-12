@@ -10,17 +10,22 @@ async def init_db():
     global db_pool
     if not DATABASE_URL:
         print("❌ No se encontró la variable de entorno DATABASE_URL.")
-        return
+        return False
     print(f"Intentando conectar a la base de datos: {DATABASE_URL}")
-    db_pool = await asyncpg.create_pool(DATABASE_URL)
-    async with db_pool.acquire() as conn:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS user_xp (
-                user_id BIGINT PRIMARY KEY,
-                xp INTEGER NOT NULL
-            );
-        """)
-    print("✅ Conexión y tabla de XP listas.")
+    try:
+        db_pool = await asyncpg.create_pool(DATABASE_URL)
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_xp (
+                    user_id BIGINT PRIMARY KEY,
+                    xp INTEGER NOT NULL
+                );
+            """)
+        print("✅ Conexión y tabla de XP listas.")
+        return True
+    except Exception as e:
+        print(f"❌ Error al conectar a la base de datos: {e}")
+        return False
 
 async def get_xp(user_id):
     async with db_pool.acquire() as conn:
@@ -154,8 +159,11 @@ def setup_rewards_commands(bot: commands.Bot):
 
     @bot.event
     async def on_ready():
-        await init_db()
-        print(f"Bot listo como {bot.user}")
+        ok = await init_db()
+        if not ok:
+            print("❌ El bot no puede funcionar sin base de datos. Revisa tu DATABASE_URL y la conexión a Railway.")
+        else:
+            print(f"Bot listo como {bot.user}")
 
     # Manejo de errores de cooldown
     @bot.event
