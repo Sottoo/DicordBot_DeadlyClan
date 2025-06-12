@@ -65,32 +65,48 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# Servidor web Flask para mantener el bot activo (opcional en servicios como Replit)
-app = Flask(__name__)
+# Registra los comandos de recompensas
+setup_rewards_commands(bot)
+
+@app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "El bot está activo y funcionando correctamente."
+    return "Bot activo."
 
 def run_webserver():
     app.run(host="0.0.0.0", port=8080)
 
-# Función principal para iniciar el bot
+async def autosave_xp():
+    await bot.wait_until_ready()
+    while not bot.is_closed():
+        save_user_xp()
+        await asyncio.sleep(60)
+
+@bot.event
+async def on_ready():
+    print(f"{bot.user} listo. Conectado a {len(bot.guilds)} servidores.")
+    bot.loop.create_task(autosave_xp())
+
+@bot.event
+async def on_disconnect():
+    print("🔌 Bot desconectado: guardando XP...")
+    save_user_xp()
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    await add_xp(message.author, 1, message.channel)
+    await bot.process_commands(message)
+
 async def start_bot():
-    try:
-        token = os.getenv("DISCORD_TOKEN")
-        if not token:
-            raise ValueError("⚠️ Variable de entorno 'DISCORD_TOKEN' no encontrada.")
-
-        await setup_music_commands(bot)  # Registrar comandos de música
-        await bot.start(token)
-
-    except discord.errors.HTTPException as e:
-        print(f"⚠️ Error de conexión: {e}")
-    except ValueError as e:
-        print(e)
-    except Exception as e:
-        print(f"⚠️ Error inesperado: {e}")
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        raise ValueError("🔴 Falta DISCORD_TOKEN")
+    bot.loop.create_task(autosave_xp())
+    await bot.start(token)
 
 if __name__ == "__main__":
     threading.Thread(target=run_webserver).start()
