@@ -1,14 +1,9 @@
 import discord
 from discord.ext import commands
-from collections import defaultdict
-import json
-import os
+import aiosqlite
+import asyncio
 
-# Archivo donde se guardan los datos
-DATA_FILE = "user_xp.json"
-
-# Diccionario de XP de usuarios
-user_xp = defaultdict(int)
+DB_FILE = "user_xp.db"
 
 # RANGOS Y RECOMPENSAS
 RANKS = [
@@ -24,39 +19,55 @@ RANKS = [
     {"name": "Legend", "xp_required": 15000, "reward": 1148105224451754095},
 ]
 
-# Cargar datos
-def load_user_xp():
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as file:
-                data = json.load(file)
-                for user_id, xp in data.items():
-                    user_xp[int(user_id)] = xp
-        except Exception as e:
-            print(f"⚠️ Error al cargar XP: {e}")
+# Diccionario de XP en memoria (opcional, para cache)
+user_xp = {}
 
-# Guardar datos
-def save_user_xp():
-    try:
-        with open(DATA_FILE, "w", encoding="utf-8") as file:
-            json.dump(dict(user_xp), file, ensure_ascii=False, indent=4)
-        print("✅ XP guardado.")
-    except Exception as e:
-        print(f"⚠️ Error al guardar XP: {e}")
+# Inicializar la base de datos
+async def init_db():
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_xp (
+                user_id INTEGER PRIMARY KEY,
+                xp INTEGER NOT NULL
+            )
+        """)
+        await db.commit()
+        # Cargar datos en memoria (opcional)
+        async with db.execute("SELECT user_id, xp FROM user_xp") as cursor:
+            async for row in cursor:
+                user_xp[row[0]] = row[1]
 
-# Cargar al iniciar
-load_user_xp()
+# Guardar XP en la base de datos
+async def save_user_xp(user_id, xp):
+    user_xp[user_id] = xp
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO user_xp (user_id, xp) VALUES (?, ?)",
+            (user_id, xp)
+        )
+        await db.commit()
+
+# Obtener XP de un usuario
+async def get_user_xp(user_id):
+    if user_id in user_xp:
+        return user_xp[user_id]
+    async with aiosqlite.connect(DB_FILE) as db:
+        async with db.execute("SELECT xp FROM user_xp WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            xp = row[0] if row else 0
+            user_xp[user_id] = xp
+            return xp
 
 # Sumar XP a un usuario
 async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
     user_id = member.id
-    previous_xp = user_xp[user_id]
-    user_xp[user_id] += xp
-    print(f"[XP] {member.name}: {previous_xp} → {user_xp[user_id]}")
-    save_user_xp()
+    previous_xp = await get_user_xp(user_id)
+    new_xp = previous_xp + xp
+    await save_user_xp(user_id, new_xp)
+    print(f"[XP] {member.name}: {previous_xp} → {new_xp}")
 
     for rank in reversed(RANKS):
-        if user_xp[user_id] >= rank["xp_required"] > previous_xp:
+        if new_xp >= rank["xp_required"] > previous_xp:
             await handle_rank_up(member, rank, channel)
             break
 
@@ -85,7 +96,13 @@ async def handle_rank_up(member: discord.Member, rank: dict, channel: discord.Te
 def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="rank")
     async def check_rank(ctx):
-        sorted_users = sorted(user_xp.items(), key=lambda item: item[1], reverse=True)
+        # Obtener todos los usuarios ordenados por XP
+        async with aiosqlite.connect(DB_FILE) as db:
+            async with db.execute("SELECT user_id, xp FROM user_xp ORDER BY xp DESC") as cursor:
+                sorted_users = []
+                async for row in cursor:
+                    sorted_users.append((row[0], row[1]))
+
         lines = []
         for i, (uid, xp) in enumerate(sorted_users[:10], start=1):
             member = ctx.guild.get_member(uid)
@@ -95,7 +112,8 @@ def setup_rewards_commands(bot: commands.Bot):
 
         user_pos = next((i + 1 for i, (uid, _) in enumerate(sorted_users) if uid == ctx.author.id), None)
         if user_pos and user_pos > 10:
-            lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp[ctx.author.id]} XP**")
+            user_xp_val = await get_user_xp(ctx.author.id)
+            lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp_val} XP**")
 
         embed = discord.Embed(
             title="🏆 Ranking de XP",
@@ -109,7 +127,7 @@ def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="progreso")
     async def progreso(ctx, member: discord.Member = None):
         member = member or ctx.author
-        xp = user_xp.get(member.id, 0)
+        xp = await get_user_xp(member.id)
         next_rank = next((r for r in RANKS if xp < r["xp_required"]), None)
 
         if next_rank:
@@ -158,3 +176,9 @@ def setup_rewards_commands(bot: commands.Bot):
             await ctx.send(embed=embed, delete_after=10)
         else:
             raise error
+
+# Inicializar la base de datos al iniciar el bot
+@commands.Cog.listener()
+async def on_ready():
+    await init_db()
+    print(f"✅ Base de datos inicializada y conectada.")
