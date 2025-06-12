@@ -1,9 +1,14 @@
 import discord
 from discord.ext import commands
-import aiosqlite
-import asyncio
+from collections import defaultdict
+import json
+import os
 
-DB_FILE = "user_xp.db"
+# Archivo donde se guardan los datos
+DATA_FILE = "user_xp.json"
+
+# Diccionario de XP de usuarios
+user_xp = defaultdict(int)
 
 # RANGOS Y RECOMPENSAS
 RANKS = [
@@ -19,55 +24,80 @@ RANKS = [
     {"name": "Legend", "xp_required": 15000, "reward": 1148105224451754095},
 ]
 
-# Diccionario de XP en memoria (opcional, para cache)
-user_xp = {}
+# ID del canal de backup (pon aquí el ID real de tu canal)
+BACKUP_CHANNEL_ID = 1382537437326213211 # <-- Cambia esto por el canal de backup
 
-# Inicializar la base de datos
-async def init_db():
-    async with aiosqlite.connect(DB_FILE) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS user_xp (
-                user_id INTEGER PRIMARY KEY,
-                xp INTEGER NOT NULL
-            )
-        """)
-        await db.commit()
-        # Cargar datos en memoria (opcional)
-        async with db.execute("SELECT user_id, xp FROM user_xp") as cursor:
-            async for row in cursor:
-                user_xp[row[0]] = row[1]
+# Cargar datos
+def load_user_xp():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as file:
+                data = json.load(file)
+                for user_id, xp in data.items():
+                    user_xp[int(user_id)] = xp
+        except Exception as e:
+            print(f"⚠️ Error al cargar XP: {e}")
 
-# Guardar XP en la base de datos
-async def save_user_xp(user_id, xp):
-    user_xp[user_id] = xp
-    async with aiosqlite.connect(DB_FILE) as db:
-        await db.execute(
-            "INSERT OR REPLACE INTO user_xp (user_id, xp) VALUES (?, ?)",
-            (user_id, xp)
-        )
-        await db.commit()
+# Guardar datos
+def save_user_xp():
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as file:
+            json.dump(dict(user_xp), file, ensure_ascii=False, indent=4)
+        print("✅ XP guardado.")
+    except Exception as e:
+        print(f"⚠️ Error al guardar XP: {e}")
 
-# Obtener XP de un usuario
-async def get_user_xp(user_id):
-    if user_id in user_xp:
-        return user_xp[user_id]
-    async with aiosqlite.connect(DB_FILE) as db:
-        async with db.execute("SELECT xp FROM user_xp WHERE user_id = ?", (user_id,)) as cursor:
-            row = await cursor.fetchone()
-            xp = row[0] if row else 0
-            user_xp[user_id] = xp
-            return xp
+# Guardar datos en canal de Discord
+async def save_user_xp_discord(bot):
+    channel = bot.get_channel(BACKUP_CHANNEL_ID)
+    if not channel:
+        print("⚠️ No se encontró el canal de backup para XP.")
+        return
+    data = json.dumps(dict(user_xp), ensure_ascii=False, indent=4)
+    async for msg in channel.history(limit=10):
+        if msg.author == bot.user and msg.content.startswith("XP_BACKUP:"):
+            await msg.edit(content=f"XP_BACKUP:\n```json\n{data}\n```")
+            print("✅ XP guardado en Discord (editado).")
+            return
+    await channel.send(f"XP_BACKUP:\n```json\n{data}\n```")
+    print("✅ XP guardado en Discord (nuevo mensaje).")
+
+# Cargar datos desde canal de Discord
+async def load_user_xp_discord(bot):
+    channel = bot.get_channel(BACKUP_CHANNEL_ID)
+    if not channel:
+        print("⚠️ No se encontró el canal de backup para XP.")
+        return
+    async for msg in channel.history(limit=10):
+        if msg.author == bot.user and msg.content.startswith("XP_BACKUP:"):
+            try:
+                content = msg.content
+                json_str = content.split("```json")[1].split("```")[0]
+                data = json.loads(json_str)
+                for user_id, xp in data.items():
+                    user_xp[int(user_id)] = xp
+                print("✅ XP cargado desde Discord.")
+            except Exception as e:
+                print(f"⚠️ Error al cargar XP desde Discord: {e}")
+            return
+
+# Cargar al iniciar
+load_user_xp()
 
 # Sumar XP a un usuario
 async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
     user_id = member.id
-    previous_xp = await get_user_xp(user_id)
-    new_xp = previous_xp + xp
-    await save_user_xp(user_id, new_xp)
-    print(f"[XP] {member.name}: {previous_xp} → {new_xp}")
+    previous_xp = user_xp[user_id]
+    user_xp[user_id] += xp
+    print(f"[XP] {member.name}: {previous_xp} → {user_xp[user_id]}")
+    save_user_xp()
+    # Guardar automáticamente en Discord
+    bot = channel.guild._state._get_client()  # Obtener instancia del bot desde el canal
+    if bot:
+        await save_user_xp_discord(bot)
 
     for rank in reversed(RANKS):
-        if new_xp >= rank["xp_required"] > previous_xp:
+        if user_xp[user_id] >= rank["xp_required"] > previous_xp:
             await handle_rank_up(member, rank, channel)
             break
 
@@ -96,13 +126,7 @@ async def handle_rank_up(member: discord.Member, rank: dict, channel: discord.Te
 def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="rank")
     async def check_rank(ctx):
-        # Obtener todos los usuarios ordenados por XP
-        async with aiosqlite.connect(DB_FILE) as db:
-            async with db.execute("SELECT user_id, xp FROM user_xp ORDER BY xp DESC") as cursor:
-                sorted_users = []
-                async for row in cursor:
-                    sorted_users.append((row[0], row[1]))
-
+        sorted_users = sorted(user_xp.items(), key=lambda item: item[1], reverse=True)
         lines = []
         for i, (uid, xp) in enumerate(sorted_users[:10], start=1):
             member = ctx.guild.get_member(uid)
@@ -112,8 +136,7 @@ def setup_rewards_commands(bot: commands.Bot):
 
         user_pos = next((i + 1 for i, (uid, _) in enumerate(sorted_users) if uid == ctx.author.id), None)
         if user_pos and user_pos > 10:
-            user_xp_val = await get_user_xp(ctx.author.id)
-            lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp_val} XP**")
+            lines.append(f"\n🔽 Tu posición: **#{user_pos}** — **{user_xp[ctx.author.id]} XP**")
 
         embed = discord.Embed(
             title="🏆 Ranking de XP",
@@ -127,7 +150,7 @@ def setup_rewards_commands(bot: commands.Bot):
     @bot.command(name="progreso")
     async def progreso(ctx, member: discord.Member = None):
         member = member or ctx.author
-        xp = await get_user_xp(member.id)
+        xp = user_xp.get(member.id, 0)
         next_rank = next((r for r in RANKS if xp < r["xp_required"]), None)
 
         if next_rank:
@@ -160,6 +183,27 @@ def setup_rewards_commands(bot: commands.Bot):
 
         await ctx.send(embed=embed)
 
+    @bot.command(name="backup_xp")
+    @commands.has_permissions(administrator=True)
+    async def backup_xp(ctx):
+        await save_user_xp_discord(ctx.bot)
+        await ctx.send("XP respaldado en el canal de backup.")
+
+    @bot.command(name="restore_xp")
+    @commands.has_permissions(administrator=True)
+    async def restore_xp(ctx):
+        await load_user_xp_discord(ctx.bot)
+        save_user_xp()
+        await ctx.send("XP restaurado desde el canal de backup.")
+
+    @bot.event
+    async def on_ready():
+        # Si no existe el archivo local, intenta restaurar desde Discord
+        if not os.path.exists(DATA_FILE):
+            await load_user_xp_discord(bot)
+            save_user_xp()
+        print(f"Bot listo como {bot.user}")
+
     # Manejo de errores de cooldown
     @bot.event
     async def on_command_error(ctx, error):
@@ -176,9 +220,3 @@ def setup_rewards_commands(bot: commands.Bot):
             await ctx.send(embed=embed, delete_after=10)
         else:
             raise error
-
-# Inicializar la base de datos al iniciar el bot
-@commands.Cog.listener()
-async def on_ready():
-    await init_db()
-    print(f"✅ Base de datos inicializada y conectada.")
