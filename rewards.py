@@ -28,6 +28,7 @@ RANKS = [
 BACKUP_CHANNEL_ID = 1382537437326213211 # <-- Cambia esto por el canal de backup
 
 xp_restaurado = False  # Bandera para saber si la XP fue restaurada correctamente
+xp_listo = False       # Bandera para saber si la XP está lista para usarse
 
 # Cargar datos
 def load_user_xp():
@@ -65,11 +66,21 @@ async def save_user_xp_discord(bot):
     print("✅ XP guardado en Discord (nuevo mensaje).")
 
 # Cargar datos desde canal de Discord
+async def esperar_canal_backup(bot):
+    # Espera hasta que el canal de backup esté disponible
+    for _ in range(20):
+        canal = bot.get_channel(BACKUP_CHANNEL_ID)
+        if canal:
+            return canal
+        await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=1))
+    return None
+
 async def load_user_xp_discord(bot):
-    global xp_restaurado
-    channel = bot.get_channel(BACKUP_CHANNEL_ID)
+    global xp_restaurado, xp_listo
+    channel = await esperar_canal_backup(bot)
     if not channel:
-        print("⚠️ No se encontró el canal de backup para XP.")
+        print("⚠️ No se encontró el canal de backup para XP (tras esperar).")
+        xp_listo = True
         return
     async for msg in channel.history(limit=20):
         if msg.content.startswith("XP_BACKUP:"):
@@ -83,14 +94,20 @@ async def load_user_xp_discord(bot):
                 print(f"✅ XP restaurado desde Discord (mensaje ID: {msg.id}).")
             except Exception as e:
                 print(f"⚠️ Error al cargar XP desde Discord: {e}")
-            return
-    print("⚠️ No se encontró ningún respaldo XP_BACKUP en el canal de backup.")
+            break
+    else:
+        print("⚠️ No se encontró ningún respaldo XP_BACKUP en el canal de backup.")
+    xp_listo = True
 
 # Cargar al iniciar
 load_user_xp()
 
 # Sumar XP a un usuario
 async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
+    # Espera a que la XP esté lista antes de permitir sumar
+    global xp_listo
+    while not xp_listo:
+        await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=1))
     user_id = member.id
     previous_xp = user_xp[user_id]
     user_xp[user_id] += xp
@@ -203,13 +220,14 @@ def setup_rewards_commands(bot: commands.Bot):
 
     @bot.event
     async def on_ready():
-        global xp_restaurado
+        global xp_restaurado, xp_listo
         # Si no existe el archivo local, intenta restaurar desde Discord
         if not os.path.exists(DATA_FILE):
             await load_user_xp_discord(bot)
             save_user_xp()
         else:
-            xp_restaurado = True  # Ya existía localmente, se puede guardar en Discord
+            xp_restaurado = True
+            xp_listo = True
         print(f"Bot listo como {bot.user}")
 
     # Manejo de errores de cooldown
