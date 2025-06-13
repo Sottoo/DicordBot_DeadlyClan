@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 import aiosqlite
 import os
+import csv
+import io
 
 # Ruta del archivo en el volumen de Railway
 DB_PATH = "/data/user_xp.db"
@@ -166,3 +168,47 @@ def setup_rewards_commands(bot: commands.Bot):
             await ctx.send(embed=embed, delete_after=10)
         else:
             raise error
+
+    @bot.command(name="respaldo_xp")
+    @commands.has_permissions(administrator=True)
+    async def respaldo_xp(ctx):
+        """Exporta el XP de todos los usuarios a un archivo CSV y lo envía."""
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["user_id", "xp"])
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT user_id, xp FROM user_xp") as cursor:
+                async for row in cursor:
+                    writer.writerow([row[0], row[1]])
+        output.seek(0)
+        await ctx.send(
+            "Aquí tienes el respaldo de XP:",
+            file=discord.File(fp=io.BytesIO(output.getvalue().encode()), filename="respaldo_xp.csv")
+        )
+
+    @bot.command(name="importar_xp")
+    @commands.has_permissions(administrator=True)
+    async def importar_xp(ctx):
+        """Importa XP desde un archivo CSV adjunto."""
+        if not ctx.message.attachments:
+            await ctx.send("Adjunta un archivo CSV con las columnas: user_id,xp")
+            return
+        attachment = ctx.message.attachments[0]
+        data = await attachment.read()
+        reader = csv.DictReader(io.StringIO(data.decode()))
+        count = 0
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("BEGIN"):
+                for row in reader:
+                    try:
+                        user_id = int(row["user_id"])
+                        xp = int(row["xp"])
+                        await db.execute(
+                            "INSERT INTO user_xp (user_id, xp) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET xp = excluded.xp",
+                            (user_id, xp)
+                        )
+                        count += 1
+                    except Exception:
+                        continue
+            await db.commit()
+        await ctx.send(f"Importación completada. Usuarios actualizados: {count}")
