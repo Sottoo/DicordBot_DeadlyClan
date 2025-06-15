@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
-import requests
 from io import BytesIO
 from bienvenida import send_welcome_message
 from spam import detect_spam
