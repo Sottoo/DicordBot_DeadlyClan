@@ -1,8 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-import requests
-from io import BytesIO
 import discord
 import os
+from io import BytesIO
 
 async def send_welcome_message(member):
     channel = member.guild.get_channel(1381227477614985247)
@@ -34,12 +33,11 @@ async def send_welcome_message(member):
             top_margin = 30
             spacing = 18
 
-            # Descargar el avatar del usuario
+            # Descargar el avatar del usuario usando discord.py (sin requests)
             try:
-                avatar_url = member.avatar.url if member.avatar else member.default_avatar.url
-                response = requests.get(avatar_url, timeout=10)
-                response.raise_for_status()
-                avatar = Image.open(BytesIO(response.content)).convert("RGBA")
+                avatar_asset = member.avatar or member.default_avatar
+                avatar_bytes = await avatar_asset.read()
+                avatar = Image.open(BytesIO(avatar_bytes)).convert("RGBA")
             except Exception as e:
                 print(f"⚠️ Error al descargar el avatar: {e}")
                 avatar = Image.new("RGBA", (avatar_diameter, avatar_diameter), (100,100,100,255))
@@ -147,5 +145,7 @@ async def send_welcome_message(member):
 
             # Eliminar el archivo generado
             os.remove(output_path)
+        except Exception as e:
+            print(f"⚠️ Error al generar la imagen de bienvenida: {e}")
         except Exception as e:
             print(f"⚠️ Error al generar la imagen de bienvenida: {e}")
