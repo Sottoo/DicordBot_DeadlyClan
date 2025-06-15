@@ -54,8 +54,6 @@ async def add_xp(member: discord.Member, xp: int, channel: discord.TextChannel):
         """, (user_id, new_xp))
         await db.commit()
 
-    print(f"[XP] {member.name}: {previous_xp} → {new_xp}")
-
     for rank in reversed(RANKS):
         if new_xp >= rank["xp_required"] > previous_xp:
             await handle_rank_up(member, rank, channel)
