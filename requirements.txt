@@ -1,7 +1,6 @@
 discord.py
 flask
 Pillow
-requests
 pytz
 aiohttp
 async-timeout
